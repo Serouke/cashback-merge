@@ -1,6 +1,6 @@
 using CashBackMerge.Core;
 
-namespace CashBackMerge.Tests.Model;
+namespace CashBackMerge.Tests.ModelTests;
 
 /// <summary>Тесты модели: игровое поле.</summary>
 public class BoardTest
