@@ -54,18 +54,48 @@ public class MoveEngineTest
         Assert.Equal(9, result.GameState.MovesLeft);
     }
 
-    [Fact(DisplayName = "После N валидных ходов игра завершена",
-          Skip = "MR2: реализуй тест и удали эту строку")]
+    [Fact(DisplayName = "После N валидных ходов игра завершена")]
     public void GameEndsAfterMovesLimit()
     {
-        Assert.Fail("Тест не реализован");
+        // Arrange
+        var engine = CreateEngine(0, 0, 0, 0, 0, 0);
+        var state = CreateState("2,.,.,.", movesLeft: 3, score: 0);
+
+        // Act
+        var firstResult = engine.ApplyMove(state, Direction.Right);
+        var secondResult = engine.ApplyMove(firstResult.GameState, Direction.Left);
+        var thirdResult = engine.ApplyMove(secondResult.GameState, Direction.Right);
+
+        // Assert
+        Assert.False(engine.IsGameOver(state));
+        Assert.False(engine.IsGameOver(firstResult.GameState));
+        Assert.False(engine.IsGameOver(secondResult.GameState));
+        Assert.Equal(0, thirdResult.GameState.MovesLeft);
+        Assert.True(engine.IsGameOver(thirdResult.GameState));
     }
 
-    [Fact(DisplayName = "Достижение плитки 32% не заканчивает игру — доигрываем до лимита ходов",
-          Skip = "MR2: реализуй тест и удали эту строку")]
+    [Fact(DisplayName = "Достижение плитки 32% не заканчивает игру — доигрываем до лимита ходов")]
     public void ReachingMaxTileDoesNotEndGame()
     {
-        Assert.Fail("Тест не реализован");
+        // Arrange
+        var engine = CreateEngine(0, 0, 0, 0, 0, 0);
+        var state = CreateState(".,16,16,.", movesLeft: 3, score: 0);
+
+        // Act
+        var firstResult = engine.ApplyMove(state, Direction.Left);
+        var secondResult = engine.ApplyMove(firstResult.GameState, Direction.Right);
+        var thirdResult = engine.ApplyMove(secondResult.GameState, Direction.Left);
+
+        // Assert
+        Assert.False(engine.IsGameOver(state));
+        Assert.True(firstResult.IsFieldChanged);
+        Assert.Equal(new Cashback(32), firstResult.GameState.Board.MaxTile);
+        Assert.Equal(2, firstResult.GameState.MovesLeft);
+        Assert.False(engine.IsGameOver(firstResult.GameState));
+        Assert.Equal(1, secondResult.GameState.MovesLeft);
+        Assert.False(engine.IsGameOver(secondResult.GameState));
+        Assert.Equal(0, thirdResult.GameState.MovesLeft);
+        Assert.True(engine.IsGameOver(thirdResult.GameState));
     }
 
     [Fact(DisplayName = "Score считается по правилам и растёт только при слияниях")]

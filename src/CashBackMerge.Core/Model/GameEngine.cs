@@ -50,4 +50,26 @@ public sealed class GameEngine
         var gameStateChanged = new GameState(boardWithTile, gameState.MovesLeft - 1, gameState.Score + moveScore);
         return MoveResult.Changed(gameStateChanged, moveScore, spawnedTile);
     }
+
+    public bool IsGameOver(GameState gameState)
+    {
+        ArgumentNullException.ThrowIfNull(gameState);
+        return gameState.IsFinished || !HasAvailableMoves(gameState);
+    }
+
+    private bool HasAvailableMoves(GameState gameState)
+    {
+        var directions = Enum.GetValues<Direction>();
+
+        foreach (var direction in directions)
+        {
+            var moved = BoardMover.Move(gameState.Board, direction);
+            if (moved.Board != gameState.Board)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
