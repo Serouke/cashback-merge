@@ -13,8 +13,8 @@ public sealed class GameEngine
 
         _config = config;
 
-        var _spawnTable = new SpawnTable(_config);
-        _tileSpawner = new TileSpawner(_spawnTable, source);
+        var spawnTable = new SpawnTable(_config);
+        _tileSpawner = new TileSpawner(spawnTable, source);
     }
 
     public GameState CreateInitialState()
@@ -27,5 +27,27 @@ public sealed class GameEngine
         }
 
         return new GameState(board, _config.MovesLimit, 0);
+    }
+
+    public MoveResult ApplyMove(GameState gameState, Direction direction)
+    {
+        ArgumentNullException.ThrowIfNull(gameState);
+
+        if (gameState.IsFinished)
+        {
+            throw new InvalidOperationException("Игра была завершена");
+        }
+
+        var (shiftedBoard, moveScore) = BoardMover.Move(gameState.Board, direction);
+
+        if (shiftedBoard == gameState.Board)
+        {
+            return MoveResult.Unchanged(gameState);
+        }
+
+        var (boardWithTile, spawnedTile) = _tileSpawner.Spawn(shiftedBoard);
+
+        var gameStateChanged = new GameState(boardWithTile, gameState.MovesLeft - 1, gameState.Score + moveScore);
+        return MoveResult.Changed(gameStateChanged, moveScore, spawnedTile);
     }
 }
