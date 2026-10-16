@@ -12,7 +12,13 @@ public class MoveEngineTest
           "spawnRules": [
             { "cashback": "1", "probability": "0.85" },
             { "cashback": "2", "probability": "0.15" }
-          ]
+          ],
+          "rewardTable": [
+            { "cashback": "2", "reward": "0" },
+            { "cashback": "32", "reward": "2000" }
+          ],
+          "maxRewardCashback": "32",
+          "maxRewardAllowedRate": "0.20"
         }
         """;
 

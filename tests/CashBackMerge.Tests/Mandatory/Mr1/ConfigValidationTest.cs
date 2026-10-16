@@ -38,6 +38,13 @@ public class ConfigValidationTest
         Assert.Equal(0.85m, config.SpawnRules[0].Probability);
         Assert.Equal(new Cashback(2), config.SpawnRules[1].Cashback);
         Assert.Equal(0.15m, config.SpawnRules[1].Probability);
+        Assert.Equal(2, config.RewardTiers.Count);
+        Assert.Equal(new Cashback(2), config.RewardTiers[0].Cashback);
+        Assert.Equal(0m, config.RewardTiers[0].Reward);
+        Assert.Equal(new Cashback(32), config.RewardTiers[1].Cashback);
+        Assert.Equal(2000m, config.RewardTiers[1].Reward);
+        Assert.Equal(new Cashback(32), config.MaxRewardCashback);
+        Assert.Equal(0.20m, config.MaxRewardAllowedRate);
     }
 
     [Fact(DisplayName = "Сумма вероятностей spawn-правил не равна 1 — конфиг отклоняется")]
@@ -51,7 +58,13 @@ public class ConfigValidationTest
               "spawnRules": [
                 { "cashback": "1", "probability": "0.6" },
                 { "cashback": "2", "probability": "0.3" }
-              ]
+              ],
+              "rewardTable": [
+                { "cashback": "2", "reward": "0" },
+                { "cashback": "32", "reward": "2000" }
+              ],
+              "maxRewardCashback": "32",
+              "maxRewardAllowedRate": "0.20"
             }
             """;
 
@@ -69,7 +82,13 @@ public class ConfigValidationTest
               "movesLimit": 0,
               "spawnRules": [
                 { "cashback": "1", "probability": "1" }
-              ]
+              ],
+              "rewardTable": [
+                { "cashback": "2", "reward": "0" },
+                { "cashback": "32", "reward": "2000" }
+              ],
+              "maxRewardCashback": "32",
+              "maxRewardAllowedRate": "0.20"
             }
             """;
         const string negativeLimit = """
@@ -78,7 +97,13 @@ public class ConfigValidationTest
               "movesLimit": -5,
               "spawnRules": [
                 { "cashback": "1", "probability": "1" }
-              ]
+              ],
+              "rewardTable": [
+                { "cashback": "2", "reward": "0" },
+                { "cashback": "32", "reward": "2000" }
+              ],
+              "maxRewardCashback": "32",
+              "maxRewardAllowedRate": "0.20"
             }
             """;
 
@@ -95,7 +120,13 @@ public class ConfigValidationTest
             {
               "boardSize": 4,
               "movesLimit": 100,
-              "spawnRules": []
+              "spawnRules": [],
+              "rewardTable": [
+                { "cashback": "2", "reward": "0" },
+                { "cashback": "32", "reward": "2000" }
+              ],
+              "maxRewardCashback": "32",
+              "maxRewardAllowedRate": "0.20"
             }
             """;
 

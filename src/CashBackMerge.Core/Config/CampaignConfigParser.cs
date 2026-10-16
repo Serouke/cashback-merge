@@ -45,12 +45,79 @@ public static class CampaignConfigParser
 
         var spawnRules = ParseSpawnRules(dto.SpawnRules, errors);
 
-        if (errors.Count != 0)
+        int errorsCountBeforeRewardTable = errors.Count;
+        var rewardTiers = ParseRewardTiers(dto.RewardTable, errors);
+        bool isTableValid = errors.Count == errorsCountBeforeRewardTable;
+
+        Cashback? maxRewardCashback = ParseCashback(dto.MaxRewardCashback);
+        if (maxRewardCashback is null)
+        {
+            errors.Add(new ConfigError(ConfigErrorCodes.MaxRewardCashbackInvalid, "maxRewardCashback: нужна положительная степень двойки"));
+        }
+
+        if (!decimal.TryParse(dto.MaxRewardAllowedRate, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out decimal maxRewardAllowedRate) || maxRewardAllowedRate > 1)
+        {
+            errors.Add(new ConfigError(ConfigErrorCodes.MaxRewardAllowedRateInvalid, "maxRewardAllowedRate: нужно число от 0 до 1"));
+        }
+
+        if (isTableValid && maxRewardCashback is not null && !rewardTiers.Any(tier => tier.Cashback == maxRewardCashback.Value))
+        {
+            errors.Add(new ConfigError(ConfigErrorCodes.MaxRewardCashbackNotInTable, $"maxRewardCashback: процента {maxRewardCashback.Value.Percent} нет в rewardTable"));
+        }
+
+        if (errors.Count != 0 || maxRewardCashback is not Cashback maxCashback)
         {
             throw new IncorrectConfigException(errors);
         }
 
-        return new CampaignConfig(boardSize, movesLimit, spawnRules);
+        return new CampaignConfig(
+            boardSize,
+            movesLimit,
+            spawnRules,
+            rewardTiers,
+            maxCashback,
+            maxRewardAllowedRate);
+    }
+
+    private static List<RewardTier> ParseRewardTiers(List<RewardTierDto>? rewardTiers, List<ConfigError> errors)
+    {
+        List<RewardTier> rewardTiersParsed = [];
+
+        if (rewardTiers is null || rewardTiers.Count == 0)
+        {
+            errors.Add(new ConfigError(ConfigErrorCodes.RewardTableEmpty, "rewardTable: нужна хотя бы одна строка"));
+            return rewardTiersParsed;
+        }
+
+        HashSet<Cashback> seen = [];
+
+        for (int i = 0; i < rewardTiers.Count; i++)
+        {
+            int errorsCountBefore = errors.Count;
+            RewardTierDto tier = rewardTiers[i];
+
+            Cashback? cashback = ParseCashback(tier.Cashback);
+            if (cashback is null)
+            {
+                errors.Add(new ConfigError(ConfigErrorCodes.RewardTierCashbackInvalid, $"rewardTable[{i}].cashback: нужна положительная степень двойки"));
+            }
+            else if (!seen.Add(cashback.Value))
+            {
+                errors.Add(new ConfigError(ConfigErrorCodes.RewardTierCashbackDuplicate, $"rewardTable[{i}].cashback: процент {cashback.Value.Percent} уже есть в таблице"));
+            }
+
+            if (!decimal.TryParse(tier.Reward, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out decimal reward))
+            {
+                errors.Add(new ConfigError(ConfigErrorCodes.RewardTierRewardInvalid, $"rewardTable[{i}].reward: нужно неотрицательное число"));
+            }
+
+            if (errors.Count == errorsCountBefore && cashback is Cashback tile)
+            {
+                rewardTiersParsed.Add(new RewardTier(tile, reward));
+            }
+        }
+
+        return rewardTiersParsed;
     }
 
     private static List<SpawnRule> ParseSpawnRules(List<SpawnRuleDto>? spawnRules, List<ConfigError> errors)
@@ -67,9 +134,8 @@ public static class CampaignConfigParser
         {
             SpawnRuleDto rule = spawnRules[i];
 
-            bool cashbackOk = int.TryParse(rule.Cashback, NumberStyles.None, CultureInfo.InvariantCulture, out int percent)
-                && Cashback.IsValid(percent);
-            if (!cashbackOk)
+            Cashback? cashback = ParseCashback(rule.Cashback);
+            if (cashback is null)
             {
                 errors.Add(new ConfigError(ConfigErrorCodes.SpawnRuleCashbackInvalid, $"spawnRules[{i}].cashback: нужна положительная степень двойки"));
             }
@@ -89,9 +155,9 @@ public static class CampaignConfigParser
                 probabilityOk = true;
             }
 
-            if (cashbackOk && probabilityOk)
+            if (cashback is Cashback tile && probabilityOk)
             {
-                spawnRulesParsed.Add(new SpawnRule(new Cashback(percent), probability));
+                spawnRulesParsed.Add(new SpawnRule(tile, probability));
             }
         }
 
@@ -102,5 +168,16 @@ public static class CampaignConfigParser
         }
 
         return spawnRulesParsed;
+    }
+
+    private static Cashback? ParseCashback(string? text)
+    {
+        if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out int percent)
+            || !Cashback.IsValid(percent))
+        {
+            return null;
+        }
+
+        return new Cashback(percent);
     }
 }
