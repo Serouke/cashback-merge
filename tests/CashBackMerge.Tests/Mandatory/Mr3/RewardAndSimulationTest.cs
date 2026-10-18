@@ -61,24 +61,64 @@ public class RewardAndSimulationTest
         Assert.Equal(15, tiles.Count(tile => tile == new Cashback(2)));
     }
 
-    [Fact(DisplayName = "Отчёт содержит распределение максимальных плиток и наград",
-          Skip = "MR3: реализуй тест и удали эту строку")]
+    [Fact(DisplayName = "Отчёт содержит распределение максимальных плиток и наград")]
     public void ReportContainsDistributions()
     {
-        Assert.Fail("Тест не реализован");
+        // Arrange
+        var results = CreateResults(64, 8, 32, 64, 16);
+
+        // Act
+        var report = CreateReport(results);
+
+        // Assert
+        Assert.Equal(new[] { 8, 16, 32, 64 }, report.MaxTileDistribution.Keys);
+        Assert.Equal(new[] { 1, 1, 1, 2 }, report.MaxTileDistribution.Values);
+        Assert.Equal(new[] { 150m, 500m, 2000m }, report.RewardDistribution.Keys);
+        Assert.Equal(new[] { 1, 1, 3 }, report.RewardDistribution.Values);
     }
 
-    [Fact(DisplayName = "Отчёт содержит долю игроков с максимальной наградой",
-          Skip = "MR3: реализуй тест и удали эту строку")]
+    [Fact(DisplayName = "Отчёт содержит долю игроков с максимальной наградой")]
     public void ReportContainsMaxRewardRate()
     {
-        Assert.Fail("Тест не реализован");
+        // Arrange
+        var results = CreateResults(32, 64, 32, 16, 16, 8, 8, 4, 4, 2);
+
+        // Act
+        var report = CreateReport(results);
+
+        // Assert
+        Assert.Equal(10, report.Players);
+        Assert.Equal(3, report.MaxRewardPlayers);
+        Assert.Equal(0.3m, report.MaxRewardRate);
     }
 
-    [Fact(DisplayName = "Статус OK, если actualMaxRewardRate <= maxRewardAllowedRate, иначе FAILED",
-          Skip = "MR3: реализуй тест и удали эту строку")]
+    [Fact(DisplayName = "Статус OK, если actualMaxRewardRate <= maxRewardAllowedRate, иначе FAILED")]
     public void ReportStatusReflectsBusinessConstraint()
     {
-        Assert.Fail("Тест не реализован");
+        // Arrange
+        var atLimit = CreateResults(32, 64, 16, 16, 8, 8, 4, 4, 2, 2);
+        var overLimit = CreateResults(32, 64, 32, 16, 8, 8, 4, 4, 2, 2);
+
+        // Act
+        var atLimitReport = CreateReport(atLimit);
+        var overLimitReport = CreateReport(overLimit);
+
+        // Assert
+        Assert.Equal(0.2m, atLimitReport.MaxRewardRate);
+        Assert.Equal(SimulationStatus.Ok, atLimitReport.Status);
+        Assert.Equal(0.3m, overLimitReport.MaxRewardRate);
+        Assert.Equal(SimulationStatus.Failed, overLimitReport.Status);
+    }
+
+    private static List<GameResult> CreateResults(params int[] maxTiles)
+    {
+        return maxTiles
+            .Select(percent => new GameResult(new Cashback(percent), 0))
+            .ToList();
+    }
+
+    private static SimulationReport CreateReport(List<GameResult> results)
+    {
+        return SimulationReport.FromResults(CampaignConfigParser.Parse(ConfigJson), "random", 42, results);
     }
 }
