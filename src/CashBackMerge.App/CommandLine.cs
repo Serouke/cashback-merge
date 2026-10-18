@@ -5,10 +5,18 @@ namespace CashBackMerge.App;
 public static class CommandLine
 {
     public const string CommandShow = "show";
-    public const string Usage = "Запуск: show --config <путь к конфигу> --seed <целое число>";
+    public const string CommandSimulate = "simulate";
+    public const string Usage = """
+        Запуск:
+          show --config <путь к конфигу> --seed <целое число>
+          simulate --config <путь к конфигу> --players <число игроков> --strategy random --seed <целое число> [--output <путь к отчёту>]
+        """;
 
     private const string KeyWordSeed = "--seed";
     private const string KeyWordConfig = "--config";
+    private const string KeyWordPlayers = "--players";
+    private const string KeyWordStrategy = "--strategy";
+    private const string KeyWordOutput = "--output";
 
     public static CommandLineOptions ParseArgs(string[] args)
     {
@@ -20,13 +28,16 @@ public static class CommandLine
         }
 
         string command = args[0];
-        if (command != CommandShow)
+        if (command != CommandShow && command != CommandSimulate)
         {
             throw new CommandLineException($"Неизвестная команда: {command}");
         }
 
         int? seed = null;
         string? configPath = null;
+        int? players = null;
+        string? strategy = null;
+        string? outputPath = null;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -38,6 +49,18 @@ public static class CommandLine
                     break;
                 case KeyWordConfig:
                     configPath = ValueOfParam(args, i);
+                    i++;
+                    break;
+                case KeyWordPlayers:
+                    players = ParseInt(ValueOfParam(args, i), args[i]);
+                    i++;
+                    break;
+                case KeyWordStrategy:
+                    strategy = ValueOfParam(args, i);
+                    i++;
+                    break;
+                case KeyWordOutput:
+                    outputPath = ValueOfParam(args, i);
                     i++;
                     break;
                 default:
@@ -55,7 +78,27 @@ public static class CommandLine
             throw new CommandLineException($"{KeyWordSeed}: параметр обязателен");
         }
 
-        return new CommandLineOptions(command, configPath, seed.Value);
+        if (command == CommandShow)
+        {
+            return new ShowOptions(configPath, seed.Value);
+        }
+
+        if (players is null)
+        {
+            throw new CommandLineException($"{KeyWordPlayers}: параметр обязателен");
+        }
+
+        if (players <= 0)
+        {
+            throw new CommandLineException($"{KeyWordPlayers}: число игроков должно быть больше нуля");
+        }
+
+        if (strategy is null)
+        {
+            throw new CommandLineException($"{KeyWordStrategy}: параметр обязателен");
+        }
+
+        return new SimulateOptions(configPath, seed.Value, players.Value, strategy, outputPath);
     }
 
     private static int ParseInt(string str, string flagName)

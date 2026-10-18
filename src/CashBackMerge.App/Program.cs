@@ -5,22 +5,17 @@ using CashBackMerge.Core;
 try
 {
     Console.OutputEncoding = Encoding.UTF8;
-    var parsed = CommandLine.ParseArgs(args);
+    var options = CommandLine.ParseArgs(args);
 
-    var configPath = parsed.ConfigPath;
-    var seed = parsed.Seed;
+    var text = File.ReadAllText(options.ConfigPath);
+    var config = CampaignConfigParser.Parse(text);
 
-    var text = File.ReadAllText(configPath);
-
-    var source = new SeededRandomSource(seed);
-    var engine = new GameEngine(CampaignConfigParser.Parse(text), source);
-    var state = engine.CreateInitialState();
-
-    Console.WriteLine(BoardProcessing.BoardToString(state.Board));
-    Console.WriteLine($"Оставшиеся ходы {state.MovesLeft}");
-    Console.WriteLine($"Счёт {state.Score}");
-
-    return 0;
+    return options switch
+    {
+        ShowOptions show => Show(config, show),
+        SimulateOptions simulate => Simulate(config, simulate),
+        _ => throw new InvalidOperationException($"Нет обработчика для команды {options.GetType().Name}")
+    };
 }
 catch (CommandLineException commandLineException)
 {
@@ -38,13 +33,53 @@ catch (IncorrectConfigException configException)
 }
 catch (IOException ioException)
 {
-    Console.Error.WriteLine($"Ошибка при чтении файла. " + ioException.Message);
+    Console.Error.WriteLine("Ошибка при работе с файлом. " + ioException.Message);
     return 1;
 }
 catch (UnauthorizedAccessException unauthorizedAccessException)
 {
-    Console.Error.WriteLine($"Ошибка при чтении файла. " + unauthorizedAccessException.Message);
+    Console.Error.WriteLine("Ошибка при работе с файлом. " + unauthorizedAccessException.Message);
     return 1;
 }
 
+static int Show(CampaignConfig config, ShowOptions options)
+{
+    var engine = new GameEngine(config, new SeededRandomSource(options.Seed));
+    var state = engine.CreateInitialState();
 
+    Console.WriteLine(BoardProcessing.BoardToString(state.Board));
+    Console.WriteLine($"Оставшиеся ходы {state.MovesLeft}");
+    Console.WriteLine($"Счёт {state.Score}");
+
+    return 0;
+}
+
+static int Simulate(CampaignConfig config, SimulateOptions options)
+{
+    var strategy = CreateStrategy(options.Strategy);
+    var report = CampaignSimulator.Run(config, strategy, options.Players, options.Seed);
+    var markdown = MarkdownReportFormatter.Format(report);
+
+    if (options.OutputPath is null)
+    {
+        Console.Write(markdown);
+    }
+    else
+    {
+        File.WriteAllText(options.OutputPath, markdown);
+        Console.WriteLine($"Отчёт записан в {options.OutputPath}");
+    }
+
+    Console.WriteLine($"Статус: {MarkdownReportFormatter.FormatStatus(report.Status)}");
+
+    return report.Status == SimulationStatus.Ok ? 0 : 2;
+}
+
+static IMoveStrategy CreateStrategy(string name)
+{
+    return name switch
+    {
+        "random" => new RandomStrategy(),
+        _ => throw new CommandLineException($"Неизвестная стратегия: {name}. Доступна: random")
+    };
+}
