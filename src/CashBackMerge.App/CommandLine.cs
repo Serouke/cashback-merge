@@ -1,4 +1,5 @@
 using System.Globalization;
+using CashBackMerge.Core;
 
 namespace CashBackMerge.App;
 
@@ -6,10 +7,14 @@ public static class CommandLine
 {
     public const string CommandShow = "show";
     public const string CommandSimulate = "simulate";
+    public const string CommandPlay = "play";
+    public const string CommandReplay = "replay";
     public const string Usage = """
         Запуск:
           show --config <путь к конфигу> --seed <целое число>
           simulate --config <путь к конфигу> --players <число игроков> --strategy random --seed <целое число> [--output <путь к отчёту>]
+          play --config <путь к конфигу> --seed <целое число>
+          replay --config <путь к конфигу> --seed <целое число> --moves <ходы буквами L, R, U, D>
         """;
 
     private const string KeyWordSeed = "--seed";
@@ -17,6 +22,7 @@ public static class CommandLine
     private const string KeyWordPlayers = "--players";
     private const string KeyWordStrategy = "--strategy";
     private const string KeyWordOutput = "--output";
+    private const string KeyWordMoves = "--moves";
 
     public static CommandLineOptions ParseArgs(string[] args)
     {
@@ -28,7 +34,7 @@ public static class CommandLine
         }
 
         string command = args[0];
-        if (command != CommandShow && command != CommandSimulate)
+        if (command is not (CommandShow or CommandSimulate or CommandPlay or CommandReplay))
         {
             throw new CommandLineException($"Неизвестная команда: {command}");
         }
@@ -38,6 +44,7 @@ public static class CommandLine
         int? players = null;
         string? strategy = null;
         string? outputPath = null;
+        string? moves = null;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -63,6 +70,10 @@ public static class CommandLine
                     outputPath = ValueOfParam(args, i);
                     i++;
                     break;
+                case KeyWordMoves:
+                    moves = ValueOfParam(args, i);
+                    i++;
+                    break;
                 default:
                     throw new CommandLineException($"Неизвестный параметр: {args[i]}");
             }
@@ -78,11 +89,18 @@ public static class CommandLine
             throw new CommandLineException($"{KeyWordSeed}: параметр обязателен");
         }
 
-        if (command == CommandShow)
+        return command switch
         {
-            return new ShowOptions(configPath, seed.Value);
-        }
+            CommandShow => new ShowOptions(configPath, seed.Value),
+            CommandPlay => new PlayOptions(configPath, seed.Value),
+            CommandReplay => CreateReplayOptions(configPath, seed.Value, moves),
+            CommandSimulate => CreateSimulateOptions(configPath, seed.Value, players, strategy, outputPath),
+            _ => throw new CommandLineException($"Неизвестная команда: {command}")
+        };
+    }
 
+    private static SimulateOptions CreateSimulateOptions(string configPath, int seed, int? players, string? strategy, string? outputPath)
+    {
         if (players is null)
         {
             throw new CommandLineException($"{KeyWordPlayers}: параметр обязателен");
@@ -98,7 +116,22 @@ public static class CommandLine
             throw new CommandLineException($"{KeyWordStrategy}: параметр обязателен");
         }
 
-        return new SimulateOptions(configPath, seed.Value, players.Value, strategy, outputPath);
+        return new SimulateOptions(configPath, seed, players.Value, strategy, outputPath);
+    }
+
+    private static ReplayOptions CreateReplayOptions(string configPath, int seed, string? moves)
+    {
+        if (moves is null)
+        {
+            throw new CommandLineException($"{KeyWordMoves}: параметр обязателен");
+        }
+
+        if (!MoveNotation.TryParse(moves, out var directions))
+        {
+            throw new CommandLineException($"{KeyWordMoves}: ходы записываются буквами L, R, U, D, например LLUR");
+        }
+
+        return new ReplayOptions(configPath, seed, directions);
     }
 
     private static int ParseInt(string str, string flagName)
