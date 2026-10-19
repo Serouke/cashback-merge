@@ -8,6 +8,8 @@ public sealed class SimulationReport
 
     public int MovesLimit { get; }
 
+    public int BoardSize { get; }
+
     public int Seed { get; }
 
     public string StrategyName { get; }
@@ -33,6 +35,7 @@ public sealed class SimulationReport
     private SimulationReport(
         int players,
         int movesLimit,
+        int boardSize,
         int seed,
         string strategyName,
         Cashback maxRewardCashback,
@@ -47,6 +50,7 @@ public sealed class SimulationReport
     {
         Players = players;
         MovesLimit = movesLimit;
+        BoardSize = boardSize;
         Seed = seed;
         StrategyName = strategyName;
         MaxRewardCashback = maxRewardCashback;
@@ -103,6 +107,7 @@ public sealed class SimulationReport
         return new SimulationReport(
             results.Count,
             config.MovesLimit,
+            config.BoardSize,
             seed,
             strategyName,
             config.MaxRewardCashback,

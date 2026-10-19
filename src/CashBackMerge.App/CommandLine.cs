@@ -9,12 +9,14 @@ public static class CommandLine
     public const string CommandSimulate = "simulate";
     public const string CommandPlay = "play";
     public const string CommandReplay = "replay";
+    public const string CommandCompare = "compare";
     public const string Usage = """
         Запуск:
           show --config <путь к конфигу> --seed <целое число>
           simulate --config <путь к конфигу> --players <число игроков> --strategy random --seed <целое число> [--output <путь к отчёту>]
           play --config <путь к конфигу> --seed <целое число>
           replay --config <путь к конфигу> --seed <целое число> --moves <ходы буквами L, R, U, D>
+          compare --config <путь к конфигу> --config <путь к конфигу> [--config ...] --players <число игроков> --strategy random --seed <целое число> [--output <путь к отчёту>]
         """;
 
     private const string KeyWordSeed = "--seed";
@@ -34,13 +36,13 @@ public static class CommandLine
         }
 
         string command = args[0];
-        if (command is not (CommandShow or CommandSimulate or CommandPlay or CommandReplay))
+        if (command is not (CommandShow or CommandSimulate or CommandPlay or CommandReplay or CommandCompare))
         {
             throw new CommandLineException($"Неизвестная команда: {command}");
         }
 
         int? seed = null;
-        string? configPath = null;
+        var configPaths = new List<string>();
         int? players = null;
         string? strategy = null;
         string? outputPath = null;
@@ -55,7 +57,7 @@ public static class CommandLine
                     i++;
                     break;
                 case KeyWordConfig:
-                    configPath = ValueOfParam(args, i);
+                    configPaths.Add(ValueOfParam(args, i));
                     i++;
                     break;
                 case KeyWordPlayers:
@@ -79,7 +81,7 @@ public static class CommandLine
             }
         }
 
-        if (configPath is null)
+        if (configPaths.Count == 0)
         {
             throw new CommandLineException($"{KeyWordConfig}: параметр обязателен");
         }
@@ -89,34 +91,36 @@ public static class CommandLine
             throw new CommandLineException($"{KeyWordSeed}: параметр обязателен");
         }
 
+        if (command == CommandCompare)
+        {
+            return CreateCompareOptions(configPaths, seed.Value, players, strategy, outputPath);
+        }
+
+        if (configPaths.Count > 1)
+        {
+            throw new CommandLineException($"{KeyWordConfig}: команде {command} нужен один конфиг");
+        }
+
+        var configPath = configPaths[0];
+
         return command switch
         {
             CommandShow => new ShowOptions(configPath, seed.Value),
             CommandPlay => new PlayOptions(configPath, seed.Value),
             CommandReplay => CreateReplayOptions(configPath, seed.Value, moves),
-            CommandSimulate => CreateSimulateOptions(configPath, seed.Value, players, strategy, outputPath),
+            CommandSimulate => new SimulateOptions(configPath, seed.Value, RequirePlayers(players), RequireStrategy(strategy), outputPath),
             _ => throw new CommandLineException($"Неизвестная команда: {command}")
         };
     }
 
-    private static SimulateOptions CreateSimulateOptions(string configPath, int seed, int? players, string? strategy, string? outputPath)
+    private static CompareOptions CreateCompareOptions(List<string> configPaths, int seed, int? players, string? strategy, string? outputPath)
     {
-        if (players is null)
+        if (configPaths.Count < 2)
         {
-            throw new CommandLineException($"{KeyWordPlayers}: параметр обязателен");
+            throw new CommandLineException($"{KeyWordConfig}: для сравнения нужно хотя бы два конфига");
         }
 
-        if (players <= 0)
-        {
-            throw new CommandLineException($"{KeyWordPlayers}: число игроков должно быть больше нуля");
-        }
-
-        if (strategy is null)
-        {
-            throw new CommandLineException($"{KeyWordStrategy}: параметр обязателен");
-        }
-
-        return new SimulateOptions(configPath, seed, players.Value, strategy, outputPath);
+        return new CompareOptions(configPaths, seed, RequirePlayers(players), RequireStrategy(strategy), outputPath);
     }
 
     private static ReplayOptions CreateReplayOptions(string configPath, int seed, string? moves)
@@ -132,6 +136,31 @@ public static class CommandLine
         }
 
         return new ReplayOptions(configPath, seed, directions);
+    }
+
+    private static int RequirePlayers(int? players)
+    {
+        if (players is null)
+        {
+            throw new CommandLineException($"{KeyWordPlayers}: параметр обязателен");
+        }
+
+        if (players <= 0)
+        {
+            throw new CommandLineException($"{KeyWordPlayers}: число игроков должно быть больше нуля");
+        }
+
+        return players.Value;
+    }
+
+    private static string RequireStrategy(string? strategy)
+    {
+        if (strategy is null)
+        {
+            throw new CommandLineException($"{KeyWordStrategy}: параметр обязателен");
+        }
+
+        return strategy;
     }
 
     private static int ParseInt(string str, string flagName)

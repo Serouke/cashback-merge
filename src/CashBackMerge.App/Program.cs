@@ -7,15 +7,13 @@ try
     Console.OutputEncoding = Encoding.UTF8;
     var options = CommandLine.ParseArgs(args);
 
-    var text = File.ReadAllText(options.ConfigPath);
-    var config = CampaignConfigParser.Parse(text);
-
     return options switch
     {
-        ShowOptions show => Show(config, show),
-        SimulateOptions simulate => Simulate(config, simulate),
-        PlayOptions play => ConsoleGame.Play(config, play),
-        ReplayOptions replay => Replay(config, replay),
+        ShowOptions show => Show(LoadConfig(show.ConfigPath), show),
+        SimulateOptions simulate => Simulate(LoadConfig(simulate.ConfigPath), simulate),
+        PlayOptions play => ConsoleGame.Play(LoadConfig(play.ConfigPath), play),
+        ReplayOptions replay => Replay(LoadConfig(replay.ConfigPath), replay),
+        CompareOptions compare => Compare(compare),
         _ => throw new InvalidOperationException($"Нет обработчика для команды {options.GetType().Name}")
     };
 }
@@ -42,6 +40,11 @@ catch (UnauthorizedAccessException unauthorizedAccessException)
 {
     Console.Error.WriteLine("Ошибка при работе с файлом. " + unauthorizedAccessException.Message);
     return 1;
+}
+
+static CampaignConfig LoadConfig(string path)
+{
+    return CampaignConfigParser.Parse(File.ReadAllText(path));
 }
 
 static int Show(CampaignConfig config, ShowOptions options)
@@ -109,6 +112,28 @@ static int Replay(CampaignConfig config, ReplayOptions options)
     }
 
     ConsoleView.PrintResult(replay.FinalState, rewardTable);
+
+    return 0;
+}
+
+static int Compare(CompareOptions options)
+{
+    var strategy = CreateStrategy(options.Strategy);
+    var campaigns = options.ConfigPaths
+        .Select(path => new NamedCampaign(path, LoadConfig(path)))
+        .ToList();
+    var comparison = CampaignComparison.Run(campaigns, strategy, options.Players, options.Seed);
+    var markdown = MarkdownComparisonFormatter.Format(comparison);
+
+    if (options.OutputPath is null)
+    {
+        Console.Write(markdown);
+    }
+    else
+    {
+        File.WriteAllText(options.OutputPath, markdown);
+        Console.WriteLine($"Сравнение записано в {options.OutputPath}");
+    }
 
     return 0;
 }

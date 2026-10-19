@@ -1,3 +1,3 @@
 namespace CashBackMerge.App;
 
-public sealed record PlayOptions(string ConfigPath, int Seed) : CommandLineOptions(ConfigPath, Seed);
+public sealed record PlayOptions(string ConfigPath, int Seed) : CommandLineOptions(Seed);

@@ -19,6 +19,7 @@ public static class MarkdownReportFormatter
         AppendLine(builder, "|---|---|");
         AppendLine(builder, Invariant($"| Игроков | {report.Players} |"));
         AppendLine(builder, Invariant($"| Лимит ходов | {report.MovesLimit} |"));
+        AppendLine(builder, Invariant($"| Поле | {report.BoardSize}×{report.BoardSize} |"));
         AppendLine(builder, Invariant($"| Seed | {report.Seed} |"));
         AppendLine(builder, $"| Стратегия | {report.StrategyName} |");
         AppendLine(builder, Invariant($"| Максимальная награда | плитка {report.MaxRewardCashback.Percent}% и выше |"));
@@ -69,12 +70,12 @@ public static class MarkdownReportFormatter
         };
     }
 
-    private static decimal Share(int players, int totalPlayers)
+    internal static decimal Share(int players, int totalPlayers)
     {
         return players * 100m / totalPlayers;
     }
 
-    private static void AppendLine(StringBuilder builder, string line)
+    internal static void AppendLine(StringBuilder builder, string line)
     {
         builder.Append(line).Append('\n');
     }
