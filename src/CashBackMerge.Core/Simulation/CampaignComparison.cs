@@ -22,4 +22,25 @@ public static class CampaignComparison
 
         return comparedCampaigns;
     }
+
+    public static IReadOnlyList<ComparedCampaign> RunStrategies(NamedCampaign campaign, IReadOnlyList<IMoveStrategy> strategies, int players, int seed)
+    {
+        ArgumentNullException.ThrowIfNull(campaign);
+        ArgumentNullException.ThrowIfNull(strategies);
+
+        if (strategies.Count < 2)
+        {
+            throw new ArgumentException("Стратегий не может быть меньше двух", nameof(strategies));
+        }
+
+        var comparedStrategies = new List<ComparedCampaign>(strategies.Count);
+
+        foreach (var strategy in strategies)
+        {
+            var report = CampaignSimulator.Run(campaign.Config, strategy, players, seed);
+            comparedStrategies.Add(new ComparedCampaign(strategy.Name, report));
+        }
+
+        return comparedStrategies;
+    }
 }

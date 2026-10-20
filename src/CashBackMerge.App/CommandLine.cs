@@ -13,10 +13,11 @@ public static class CommandLine
     public const string Usage = """
         Запуск:
           show --config <путь к конфигу> --seed <целое число>
-          simulate --config <путь к конфигу> --players <число игроков> --strategy random --seed <целое число> [--output <путь к отчёту>]
+          simulate --config <путь к конфигу> --players <число игроков> --strategy <random или greedy> --seed <целое число> [--output <путь к отчёту>]
           play --config <путь к конфигу> --seed <целое число>
           replay --config <путь к конфигу> --seed <целое число> --moves <ходы буквами L, R, U, D>
-          compare --config <путь к конфигу> --config <путь к конфигу> [--config ...] --players <число игроков> --strategy random --seed <целое число> [--output <путь к отчёту>]
+          compare --config <путь> --config <путь> [--config ...] --strategy <стратегия> --players <число игроков> --seed <целое число> [--output <путь к отчёту>]
+          compare --config <путь> --strategy random --strategy greedy [--strategy ...] --players <число игроков> --seed <целое число> [--output <путь к отчёту>]
         """;
 
     private const string KeyWordSeed = "--seed";
@@ -44,7 +45,7 @@ public static class CommandLine
         int? seed = null;
         var configPaths = new List<string>();
         int? players = null;
-        string? strategy = null;
+        var strategies = new List<string>();
         string? outputPath = null;
         string? moves = null;
 
@@ -65,7 +66,7 @@ public static class CommandLine
                     i++;
                     break;
                 case KeyWordStrategy:
-                    strategy = ValueOfParam(args, i);
+                    strategies.Add(ValueOfParam(args, i));
                     i++;
                     break;
                 case KeyWordOutput:
@@ -93,7 +94,7 @@ public static class CommandLine
 
         if (command == CommandCompare)
         {
-            return CreateCompareOptions(configPaths, seed.Value, players, strategy, outputPath);
+            return CreateCompareOptions(configPaths, seed.Value, players, strategies, outputPath);
         }
 
         if (configPaths.Count > 1)
@@ -108,19 +109,29 @@ public static class CommandLine
             CommandShow => new ShowOptions(configPath, seed.Value),
             CommandPlay => new PlayOptions(configPath, seed.Value),
             CommandReplay => CreateReplayOptions(configPath, seed.Value, moves),
-            CommandSimulate => new SimulateOptions(configPath, seed.Value, RequirePlayers(players), RequireStrategy(strategy), outputPath),
+            CommandSimulate => new SimulateOptions(configPath, seed.Value, RequirePlayers(players), RequireSingleStrategy(strategies, command), outputPath),
             _ => throw new CommandLineException($"Неизвестная команда: {command}")
         };
     }
 
-    private static CompareOptions CreateCompareOptions(List<string> configPaths, int seed, int? players, string? strategy, string? outputPath)
+    private static CompareOptions CreateCompareOptions(List<string> configPaths, int seed, int? players, List<string> strategies, string? outputPath)
     {
-        if (configPaths.Count < 2)
+        if (strategies.Count == 0)
         {
-            throw new CommandLineException($"{KeyWordConfig}: для сравнения нужно хотя бы два конфига");
+            throw new CommandLineException($"{KeyWordStrategy}: параметр обязателен");
         }
 
-        return new CompareOptions(configPaths, seed, RequirePlayers(players), RequireStrategy(strategy), outputPath);
+        if (configPaths.Count == 1 && strategies.Count == 1)
+        {
+            throw new CommandLineException($"Нечего сравнивать: укажите хотя бы два {KeyWordConfig} или хотя бы две {KeyWordStrategy}");
+        }
+
+        if (configPaths.Count > 1 && strategies.Count > 1)
+        {
+            throw new CommandLineException($"Сравнивать можно либо несколько {KeyWordConfig} с одной стратегией, либо одну кампанию с несколькими {KeyWordStrategy}");
+        }
+
+        return new CompareOptions(configPaths, seed, RequirePlayers(players), strategies, outputPath);
     }
 
     private static ReplayOptions CreateReplayOptions(string configPath, int seed, string? moves)
@@ -153,14 +164,19 @@ public static class CommandLine
         return players.Value;
     }
 
-    private static string RequireStrategy(string? strategy)
+    private static string RequireSingleStrategy(List<string> strategies, string command)
     {
-        if (strategy is null)
+        if (strategies.Count == 0)
         {
             throw new CommandLineException($"{KeyWordStrategy}: параметр обязателен");
         }
 
-        return strategy;
+        if (strategies.Count > 1)
+        {
+            throw new CommandLineException($"{KeyWordStrategy}: команде {command} нужна одна стратегия");
+        }
+
+        return strategies[0];
     }
 
     private static int ParseInt(string str, string flagName)

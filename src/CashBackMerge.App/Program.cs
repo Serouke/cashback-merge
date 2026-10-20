@@ -118,11 +118,13 @@ static int Replay(CampaignConfig config, ReplayOptions options)
 
 static int Compare(CompareOptions options)
 {
-    var strategy = CreateStrategy(options.Strategy);
+    var strategies = options.Strategies.Select(CreateStrategy).ToList();
     var campaigns = options.ConfigPaths
         .Select(path => new NamedCampaign(path, LoadConfig(path)))
         .ToList();
-    var comparison = CampaignComparison.Run(campaigns, strategy, options.Players, options.Seed);
+    var comparison = campaigns.Count == 1
+        ? CampaignComparison.RunStrategies(campaigns[0], strategies, options.Players, options.Seed)
+        : CampaignComparison.Run(campaigns, strategies[0], options.Players, options.Seed);
     var markdown = MarkdownComparisonFormatter.Format(comparison);
 
     if (options.OutputPath is null)
@@ -143,6 +145,7 @@ static IMoveStrategy CreateStrategy(string name)
     return name switch
     {
         "random" => new RandomStrategy(),
-        _ => throw new CommandLineException($"Неизвестная стратегия: {name}. Доступна: random")
+        "greedy" => new GreedyStrategy(),
+        _ => throw new CommandLineException($"Неизвестная стратегия: {name}. Доступны: random, greedy")
     };
 }

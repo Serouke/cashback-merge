@@ -17,13 +17,14 @@ public static class MarkdownComparisonFormatter
         var builder = new StringBuilder();
         var report = campaigns[0].Report;
 
-        MarkdownReportFormatter.AppendLine(builder, "# Сравнение кампаний Cashback Merge");
+        MarkdownReportFormatter.AppendLine(builder, "# Сравнение симуляций Cashback Merge");
         MarkdownReportFormatter.AppendLine(builder, "");
-        MarkdownReportFormatter.AppendLine(builder, Invariant($"Условия у всех кампаний одинаковые: {report.Players} игроков, seed {report.Seed}, стратегия {report.StrategyName}."));
+        MarkdownReportFormatter.AppendLine(builder, Invariant($"Все столбцы сыграны на одинаковых seed: {report.Players} игроков, seed {report.Seed}."));
         MarkdownReportFormatter.AppendLine(builder, "");
 
         AppendRow(builder, "Показатель", campaigns.Select(campaign => campaign.Name));
         AppendSeparator(builder, campaigns.Count);
+        AppendRow(builder, "Стратегия", campaigns.Select(campaign => campaign.Report.StrategyName));
         AppendRow(builder, "Поле", campaigns.Select(campaign => Invariant($"{campaign.Report.BoardSize}×{campaign.Report.BoardSize}")));
         AppendRow(builder, "Лимит ходов", campaigns.Select(campaign => Invariant($"{campaign.Report.MovesLimit}")));
         AppendRow(builder, "Максимальная награда", campaigns.Select(campaign => Invariant($"плитка {campaign.Report.MaxRewardCashback.Percent}% и выше")));
